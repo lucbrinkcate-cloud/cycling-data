@@ -4,9 +4,11 @@ import {
   Calendar,
   ChartLine,
   FileDigit,
+  Flag,
   Gauge,
   HardDrive,
   Map as MapIcon,
+  Radio,
   RotateCcw,
   Settings as SettingsIcon,
   Target,
@@ -27,6 +29,9 @@ import StatsGrid from './StatsGrid';
 import Studio from './Studio';
 import ZonePanel from './ZonePanel';
 import SettingsModal from './SettingsModal';
+import LapTable from './LapTable';
+import SensorPanel from './SensorPanel';
+import PowerDuration from './PowerDuration';
 
 interface Props {
   activity: Activity;
@@ -179,7 +184,7 @@ export default function Dashboard({ activity, onReset }: Props) {
                   }
                 />
                 <div className="relative h-[400px] md:h-[470px] xl:h-[560px]">
-                  <RouteMap activity={activity} hoverIdx={hoverIdx} pointColors={pointColors} />
+                  <RouteMap activity={activity} hoverIdx={hoverIdx} pointColors={pointColors} zones={zones} />
                 </div>
               </Panel>
             </motion.div>
@@ -248,6 +253,39 @@ export default function Dashboard({ activity, onReset }: Props) {
               </Panel>
             </motion.div>
 
+            {/* power-duration / best-effort curve (power meters only) */}
+            {zones.metric === 'power' && (
+              <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.1 }}>
+                <Panel>
+                  <PanelHeader title="POWER CURVE · BEST EFFORTS" icon={<Zap className="h-3.5 w-3.5" />} />
+                  <PowerDuration activity={activity} ftp={ftp} />
+                </Panel>
+              </motion.div>
+            )}
+
+            {/* per-lap breakdown (multi-lap activities) */}
+            {activity.laps.length > 1 && (
+              <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.12 }}>
+                <Panel>
+                  <PanelHeader
+                    title={`LAPS · ${activity.laps.length}`}
+                    icon={<Flag className="h-3.5 w-3.5" />}
+                  />
+                  <LapTable activity={activity} />
+                </Panel>
+              </motion.div>
+            )}
+
+            {/* paired sensors + battery */}
+            {activity.sensors.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.14 }}>
+                <Panel>
+                  <PanelHeader title="SENSORS & BATTERY" icon={<Radio className="h-3.5 w-3.5" />} />
+                  <SensorPanel activity={activity} />
+                </Panel>
+              </motion.div>
+            )}
+
             <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.16 }} id="studio">
               <Panel className="border-volt-400/25">
                 <PanelHeader
@@ -255,7 +293,7 @@ export default function Dashboard({ activity, onReset }: Props) {
                   icon={<MapIcon className="h-3.5 w-3.5" />}
                   right={<span className="flex h-1.5 w-1.5 rounded-full bg-volt-400 shadow-[0_0_8px_rgba(181,241,62,0.9)]" />}
                 />
-                <Studio activity={activity} />
+                <Studio activity={activity} zones={zones} colorMode={colorMode} />
               </Panel>
             </motion.div>
           </div>

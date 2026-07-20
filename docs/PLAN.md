@@ -110,12 +110,14 @@ already recorded NP/IF/TSS we prefer those.
 
 ## 3. Visual plan — every dataset, and how it's shown
 
-### A. Route map coloured by zone ✅ (built this round)
+### A. Route map coloured by zone ✅ (built)
 - The route polyline is segmented and coloured **per GPS point by its zone**
   (Z1→Z7 palette), replacing the single speed gradient.
 - Header toggle **Zones ⇄ Speed** lets the rider switch colouring; each mode has
   its own legend (Z1–Z7 swatches vs. slow→fast gradient).
-- Hovering the elevation profile drops a marker on the map at the same instant.
+- **Live on-map HUD** ✅: while scrubbing, a floating card on the map shows the
+  current zone badge + instantaneous power/speed/HR/cadence/altitude/grade,
+  with a zone-coloured marker dropping onto the route.
 
 ### B. Training Zones panel ✅ (built this round)
 - Header: metric used (Power/Speed), the threshold value (FTP in W or threshold
@@ -145,22 +147,26 @@ already recorded NP/IF/TSS we prefer those.
   labelled.
 - Hover readout shows the live zone badge plus each stream's value at the cursor.
 
-### F. Lap table 🔜
-- One row per lap (from `Activity.laps`): #, distance, time, avg speed, avg/max
-  HR, avg/max power, avg cadence, gain. Useful for structured workouts & races
-  (demo.fit's 5×1 km intervals are a perfect test case).
+### F. Lap table ✅ (built)
+- One row per lap (from `Activity.laps`): #, distance, time, avg speed, ascent,
+  avg power, avg HR, avg cadence — columns appear only when the data exists.
+  Shown for multi-lap activities (demo.fit's 5×1 km intervals render it).
 
-### G. Sensors & battery panel 🔜
+### G. Sensors & battery panel ✅ (built)
 - Cards for each paired sensor (power meter, HR strap, CORE temp, head unit)
-  with battery %/voltage — "your Karoo 2 + Assioma pedals, 92% battery".
+  with a battery icon + charge % / status — e.g. "Karoo 2 · 92%".
 
-### H. Extra derived views 🔜
-- **Grade-coloured route** (device grade or derived), **HR-zone mode** (needs
-  max-HR/LTHR from the profile), **W/kg** (needs weight), **power-duration
-  curve / best-efforts** (best 5 s / 1 / 5 / 20 min power), **pedal-balance
-  donut**, **temperature trend**, and **zones baked into the exported video**
-  (the Reel renderer already draws a speed-coloured trace — swap in zone
-  colours + a zone HUD chip).
+### H. Power curve + zone-coloured video ✅ (built) and remaining views 🔜
+- **Power-duration / best-effort curve** ✅: best average power for 5 s → 20 min
+  plotted on a log-time axis, with headline best-5 s / best-20 m / FTP cards and
+  the FTP drawn as a reference line (power-meter activities only).
+- **Zones baked into the exported video** ✅: the Reel now colours the animated
+  route trace by zone, the moving marker takes the current zone colour, and a
+  live **zone chip** (Z# · name · W or km/h) is rendered into the HUD. Exports
+  match whatever colour mode (Zones/Speed) is selected in the dashboard.
+- 🔜 Still queued: **grade-coloured route**, **HR-zone colour mode** (uses
+  max-HR/LTHR from the profile), **W/kg** (uses weight), **pedal-balance donut**
+  (we already extract L/R balance), and a **temperature trend** lane.
 
 ---
 
@@ -180,17 +186,23 @@ already recorded NP/IF/TSS we prefer those.
 `lib/activity.ts`, `lib/fit.ts`, `lib/zones.ts`, `lib/settings.ts` (new),
 `hooks/useAthleteSettings.ts` (new), `components/RouteMap.tsx`,
 `components/ElevationChart.tsx`, `components/StatsGrid.tsx`,
-`components/Dashboard.tsx`, `components/Landing.tsx`,
+`components/Dashboard.tsx`, `components/Landing.tsx`, `lib/reel.ts`,
 `components/ZonePanel.tsx` (new), `components/SettingsModal.tsx` (new),
-`components/TelemetryChart.tsx` (new).
+`components/TelemetryChart.tsx` (new), `components/LapTable.tsx` (new),
+`components/SensorPanel.tsx` (new), `components/PowerDuration.tsx` (new).
 
 ## 6. Suggested order for the remaining visuals
 
-1. ~~**Multi-stream telemetry chart (E)**~~ ✅ done.
-2. **Zones in the exported video (part of H)** — makes shared reels match the
-   dashboard; small change in `lib/reel.ts` (swap the speed-coloured trace for
-   zone colours + a zone HUD chip).
-3. **Lap table (F)** and **Sensors panel (G)** — both just render data we now
-   already extract.
-4. **HR-zone mode + W/kg + power-duration curve (H)** — once weight/max-HR are
-   in the profile (fields already exist in settings).
+Built so far: ✅ FTP/speed 7-zone route colouring · ✅ athlete profile ·
+✅ zone panel + NP/IF/TSS · ✅ expanded telemetry cards · ✅ multi-stream
+telemetry chart (E) · ✅ on-map live HUD · ✅ lap table (F) · ✅ sensors &
+battery panel (G) · ✅ power-duration curve (H) · ✅ zone-coloured video export.
+
+Remaining, in suggested order:
+1. **HR-zone colour mode** — a third map colouring using % of LTHR/max-HR from
+   the profile (the settings fields already exist).
+2. **W/kg** — divide power by the profile weight in the zone/telemetry panels.
+3. **Pedal-balance donut** — we already extract L/R balance per second.
+4. **Temperature trend** — add a temp lane emphasis / min-max callouts.
+5. **Grade-coloured route** — colour the line by device/derived grade as an
+   alternative map mode.

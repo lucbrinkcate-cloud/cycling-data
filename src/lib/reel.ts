@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 import type { Activity } from './activity';
 import { fmtDur, fmtInt, fmtKm, fmtKmh, speedColor } from './activity';
+import { ZONES } from './zones';
 
 export type ReelAspect = '16:9' | '9:16' | '1:1';
 export type ReelThemeId = 'volt' | 'glacier' | 'ember';
@@ -36,6 +37,13 @@ export interface ReelOpts {
   aspect: ReelAspect;
   themeId: ReelThemeId;
   durationSec: number;
+  /** Optional FTP/speed-zone overlay: colours the route + drives the HUD zone chip. */
+  zone?: {
+    colors: string[]; // per-point zone colour
+    idx: Int8Array; // per-point zone index (0–6)
+    metric: 'power' | 'speed';
+    threshold: number; // W or m/s
+  } | null;
 }
 
 export function reelDims(aspect: ReelAspect): { w: number; h: number } {
@@ -89,6 +97,12 @@ export class ReelRenderer {
   private chartPts: Array<{ x: number; y: number }> = [];
   private portrait: boolean;
 
+  // zone overlay (optional) — colours the route trace + the HUD chip
+  private zoneColors: string[] | null = null;
+  private zoneIdx: Int8Array | null = null;
+  private zoneMetric: 'power' | 'speed' = 'power';
+  private zoneThreshold = 0;
+
   constructor(activity: Activity, opts: ReelOpts) {
     this.activity = activity;
     this.opts = opts;
@@ -99,6 +113,13 @@ export class ReelRenderer {
     this.s = Math.min(w, h) / 720;
     this.portrait = h > w;
     this.n = activity.points.length;
+
+    if (opts.zone && opts.zone.colors.length === this.n) {
+      this.zoneColors = opts.zone.colors;
+      this.zoneIdx = opts.zone.idx;
+      this.zoneMetric = opts.zone.metric;
+      this.zoneThreshold = opts.zone.threshold;
+    }
 
     this.base = document.createElement('canvas');
     this.base.width = w;
@@ -351,6 +372,64 @@ export class ReelRenderer {
     ctx.restore();
   }
 
+  // ------------------------------------------------------------- zone chip
+  private drawZoneChip(c: Ctx, idx: number) {
+    if (!this.zoneColors || !this.zoneIdx) return;
+    const s = this.s;
+    const z = ZONES[this.zoneIdx[idx]] ?? ZONES[0];
+    const pt = this.activity.points[idx];
+    const value =
+      this.zoneMetric === 'power'
+        ? `${pt.power != null ? Math.round(pt.power) : 0} W`
+        : `${fmtKmh(pt.speed)} km/h`;
+    const label = `${z.short}  ${z.name.toUpperCase()}`;
+
+    c.save();
+    c.font = mono(600, 12 * s);
+    const labelW = c.measureText(label).width;
+    c.font = mono(700, 12 * s);
+    const valueW = c.measureText(value).width;
+    const swatch = 22 * s;
+    const padX = 12 * s;
+    const gap = 9 * s;
+    const hChip = 30 * s;
+    const wChip = swatch + padX + labelW + gap + valueW + padX;
+
+    const x = this.mapRect.x + 8 * s;
+    const y = this.mapRect.y + 8 * s;
+
+    // body
+    rr(c, x, y, wChip, hChip, 8 * s);
+    c.fillStyle = 'rgba(5,8,12,0.7)';
+    c.fill();
+    c.strokeStyle = 'rgba(148,163,184,0.22)';
+    c.lineWidth = 1;
+    c.stroke();
+
+    // coloured zone swatch with the Z number
+    rr(c, x + 3 * s, y + 3 * s, swatch - 3 * s, hChip - 6 * s, 5 * s);
+    c.fillStyle = z.color;
+    c.fill();
+    c.font = mono(700, 11 * s);
+    c.fillStyle = 'rgba(5,8,12,0.9)';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(z.short, x + 3 * s + (swatch - 3 * s) / 2, y + hChip / 2 + 0.5);
+
+    // zone name
+    c.textAlign = 'left';
+    c.font = mono(600, 12 * s);
+    c.fillStyle = 'rgba(241,245,249,0.92)';
+    c.fillText(label, x + swatch + padX - 4 * s, y + hChip / 2 + 0.5);
+
+    // live value
+    c.font = mono(700, 12 * s);
+    c.fillStyle = z.color;
+    c.fillText(value, x + swatch + padX - 4 * s + labelW + gap, y + hChip / 2 + 0.5);
+    c.textBaseline = 'alphabetic';
+    c.restore();
+  }
+
   // --------------------------------------------------- progressive route layer
   private paintProgressTo(idx: number) {
     if (idx < this.progIdx) {
@@ -371,7 +450,7 @@ export class ReelRenderer {
       const i = order[k];
       if (i > idx) break;
       const prev = k === 0 ? 0 : order[k - 1];
-      const color = this.activity.points[i].color;
+      const color = this.zoneColors ? this.zoneColors[i] : this.activity.points[i].color;
       // glow underlay
       ctx.strokeStyle = color;
       ctx.globalAlpha = 0.22;
@@ -415,26 +494,27 @@ export class ReelRenderer {
     this.paintProgressTo(idx);
     c.drawImage(this.prog, 0, 0);
 
-    // moving marker + pulse
+    // moving marker + pulse (ring takes the current zone colour when zoning)
     const x = this.px[idx];
     const y = this.py[idx];
+    const markerColor = this.zoneColors ? this.zoneColors[idx] : theme.accent;
     const pulse = (timeSec * 1.1) % 1;
     c.save();
-    c.strokeStyle = theme.accent;
+    c.strokeStyle = markerColor;
     c.globalAlpha = (1 - pulse) * 0.7;
     c.lineWidth = 2 * s;
     c.beginPath();
     c.arc(x, y, (8 + pulse * 20) * s, 0, Math.PI * 2);
     c.stroke();
     c.globalAlpha = 1;
-    c.shadowColor = theme.accent;
+    c.shadowColor = markerColor;
     c.shadowBlur = 16 * s;
     c.fillStyle = '#ffffff';
     c.beginPath();
     c.arc(x, y, 5.2 * s, 0, Math.PI * 2);
     c.fill();
     c.shadowBlur = 0;
-    c.strokeStyle = theme.accent;
+    c.strokeStyle = markerColor;
     c.lineWidth = 2.4 * s;
     c.beginPath();
     c.arc(x, y, 8.4 * s, 0, Math.PI * 2);
@@ -447,6 +527,9 @@ export class ReelRenderer {
     // ------- HUD
     if (this.portrait) this.drawHudPortrait(c, idx, pt, clamped);
     else this.drawHudLandscape(c, idx, pt, clamped);
+
+    // ------- live zone chip (when zoning)
+    this.drawZoneChip(c, idx);
 
     // ------- top progress hairline
     c.save();

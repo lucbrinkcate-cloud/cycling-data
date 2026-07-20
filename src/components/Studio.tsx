@@ -4,9 +4,12 @@ import type { Activity } from '../lib/activity';
 import { fmtBytes, fmtDur, slugify } from '../lib/activity';
 import type { ReelAspect, ReelOpts, ReelResult, ReelThemeId } from '../lib/reel';
 import { REEL_ASPECTS, REEL_DURATIONS, REEL_THEMES, ReelRenderer, canRecordVideo, ensureReelFonts, recordReel, reelDims } from '../lib/reel';
+import type { ZoneResult } from '../lib/zones';
 
 interface Props {
   activity: Activity;
+  zones: ZoneResult;
+  colorMode: 'zone' | 'speed';
 }
 
 type Phase =
@@ -15,14 +18,25 @@ type Phase =
   | { kind: 'done'; result: ReelResult }
   | { kind: 'error'; message: string };
 
-export default function Studio({ activity }: Props) {
+export default function Studio({ activity, zones, colorMode }: Props) {
   const [aspect, setAspect] = useState<ReelAspect>('16:9');
   const [duration, setDuration] = useState(25);
   const [themeId, setThemeId] = useState<ReelThemeId>('volt');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
 
-  const opts: ReelOpts = useMemo(() => ({ aspect, themeId, durationSec: duration }), [aspect, themeId, duration]);
-  const optsKey = `${aspect}|${themeId}|${duration}|${activity.id}`;
+  const opts: ReelOpts = useMemo(
+    () => ({
+      aspect,
+      themeId,
+      durationSec: duration,
+      zone:
+        colorMode === 'zone'
+          ? { colors: zones.colors, idx: zones.idx, metric: zones.metric, threshold: zones.threshold }
+          : null,
+    }),
+    [aspect, themeId, duration, colorMode, zones],
+  );
+  const optsKey = `${aspect}|${themeId}|${duration}|${activity.id}|${colorMode}`;
 
   // ---------------------------------------------------------------- preview
   const canvasRef = useRef<HTMLCanvasElement>(null);
