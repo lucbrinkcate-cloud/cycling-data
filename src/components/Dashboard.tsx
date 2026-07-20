@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Activity as ActivityIcon,
   Calendar,
+  ChartLine,
   FileDigit,
   Gauge,
   HardDrive,
@@ -21,6 +22,7 @@ import { useAthleteSettings } from '../hooks/useAthleteSettings';
 import { Chip, Logo, Panel, PanelHeader } from './ui';
 import RouteMap from './RouteMap';
 import ElevationChart from './ElevationChart';
+import TelemetryChart from './TelemetryChart';
 import StatsGrid from './StatsGrid';
 import Studio from './Studio';
 import ZonePanel from './ZonePanel';
@@ -214,6 +216,24 @@ export default function Dashboard({ activity, onReset }: Props) {
                 />
                 <div className="px-4 pb-3 pt-4">
                   <ElevationChart activity={activity} hoverIdx={hoverIdx} onHover={setHoverIdx} zones={zones} />
+                </div>
+              </Panel>
+            </motion.div>
+
+            {/* ----------------------- multi-stream telemetry ----------------------- */}
+            <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.15 }}>
+              <Panel>
+                <PanelHeader
+                  title="TELEMETRY STREAMS · SYNCED SCRUB"
+                  icon={<ChartLine className="h-3.5 w-3.5" />}
+                  right={
+                    <span className="font-mono text-[9.5px] text-mist-500">
+                      {zones.metric === 'power' ? `zones guided by FTP ${Math.round(zones.threshold)} W` : 'speed-zoned'}
+                    </span>
+                  }
+                />
+                <div className="px-4 pb-4 pt-4">
+                  <TelemetryChart activity={activity} hoverIdx={hoverIdx} onHover={setHoverIdx} zones={zones} />
                 </div>
               </Panel>
             </motion.div>

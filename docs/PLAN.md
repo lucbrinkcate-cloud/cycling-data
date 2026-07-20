@@ -134,13 +134,16 @@ already recorded NP/IF/TSS we prefer those.
 - Now shows the live **zone badge** (coloured Z#) plus instantaneous power,
   cadence, HR, grade, speed, altitude and time at the cursor.
 
-### E. Multi-stream telemetry chart 🔜 (next round — for review)
-- Stacked, time/distance-aligned traces for **power, speed, heart rate,
-  cadence** (and temperature), each in its own lane with a shared scrub cursor
-  synced to the map + elevation. Zone bands drawn as faint horizontal guides on
-  the power lane (Z1–Z7 thresholds as % of FTP).
-- Implementation: one SVG/canvas component reusing `Activity.points`; a single
-  `hoverIdx` already flows between map and elevation, so we extend that bus.
+### E. Multi-stream telemetry chart ✅ (built)
+- Stacked, distance-aligned lanes for **power, speed, heart rate, cadence** and
+  **temperature** — each lane auto-appears only when that sensor has enough
+  data (a run shows just Speed + HR; a powered ride shows all five).
+- A shared scrub cursor syncs with the map and the elevation profile (same
+  `hoverIdx` bus); hovering any of the three drives all three.
+- When zoning by power, the **FTP zone boundaries (55/75/90/105/120/150% of
+  FTP)** are drawn as guides on the power lane, with the FTP line emphasised and
+  labelled.
+- Hover readout shows the live zone badge plus each stream's value at the cursor.
 
 ### F. Lap table 🔜
 - One row per lap (from `Activity.laps`): #, distance, time, avg speed, avg/max
@@ -178,14 +181,15 @@ already recorded NP/IF/TSS we prefer those.
 `hooks/useAthleteSettings.ts` (new), `components/RouteMap.tsx`,
 `components/ElevationChart.tsx`, `components/StatsGrid.tsx`,
 `components/Dashboard.tsx`, `components/Landing.tsx`,
-`components/ZonePanel.tsx` (new), `components/SettingsModal.tsx` (new).
+`components/ZonePanel.tsx` (new), `components/SettingsModal.tsx` (new),
+`components/TelemetryChart.tsx` (new).
 
 ## 6. Suggested order for the remaining visuals
 
-1. **Multi-stream telemetry chart (E)** — highest impact, reuses the existing
-   hover-sync plumbing.
+1. ~~**Multi-stream telemetry chart (E)**~~ ✅ done.
 2. **Zones in the exported video (part of H)** — makes shared reels match the
-   dashboard; small change in `lib/reel.ts`.
+   dashboard; small change in `lib/reel.ts` (swap the speed-coloured trace for
+   zone colours + a zone HUD chip).
 3. **Lap table (F)** and **Sensors panel (G)** — both just render data we now
    already extract.
 4. **HR-zone mode + W/kg + power-duration curve (H)** — once weight/max-HR are
